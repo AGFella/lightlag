@@ -13,8 +13,6 @@ speed_of_light_km_per_s = 299792  # km/s
 def compute_planet_distances(current_time):
     result = []
     positions = []  # Store positions for plotting
-    earth = ephem.Earth()
-    earth.compute(current_time)
     for planet_name, planet in planets.items():
         planet.compute(current_time)
 
