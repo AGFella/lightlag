@@ -138,14 +138,22 @@ date_entry = tk.Entry(root)
 date_entry.grid(row=0, column=1, padx=10, pady=10)
 date_entry.insert(0, datetime.datetime.now().strftime('%Y-%m-%d'))  # Default to today
 
+date_picker = None
+
 def open_date_picker(event=None):
-    picker = tk.Toplevel(root)
-    picker.title("Select Date")
-    picker.resizable(False, False)
+    global date_picker
+    if date_picker is not None and date_picker.winfo_exists():
+        date_picker.lift()
+        date_picker.focus_force()
+        return
+
+    date_picker = tk.Toplevel(root)
+    date_picker.title("Select Date")
+    date_picker.resizable(False, False)
 
     today = datetime.date.today()
     cal = Calendar(
-        picker,
+        date_picker,
         selectmode="day",
         year=today.year,
         month=today.month,
@@ -155,15 +163,20 @@ def open_date_picker(event=None):
     cal.pack(padx=10, pady=10)
 
     def set_date():
+        global date_picker
         date_entry.delete(0, tk.END)
         date_entry.insert(0, cal.get_date())
-        picker.destroy()
+        date_entry.configure(insertontime=0)
+        root.focus_set()
+        if date_picker is not None and date_picker.winfo_exists():
+            date_picker.destroy()
+        date_picker = None
 
     def set_today():
         cal.selection_set(today)
         set_date()
 
-    button_frame = tk.Frame(picker)
+    button_frame = tk.Frame(date_picker)
     button_frame.pack(padx=10, pady=(0, 10), fill="x")
 
     select_button = tk.Button(button_frame, text="Select", command=set_date)
@@ -171,6 +184,20 @@ def open_date_picker(event=None):
 
     today_button = tk.Button(button_frame, text="Today", command=set_today)
     today_button.pack(side="right")
+
+    # Position the calendar near the entry field
+    root.update_idletasks()
+    x = date_entry.winfo_rootx()
+    y = date_entry.winfo_rooty() + date_entry.winfo_height() + 4
+    date_picker.geometry(f"+{x}+{y}")
+
+    def on_close():
+        global date_picker
+        if date_picker is not None and date_picker.winfo_exists():
+            date_picker.destroy()
+        date_picker = None
+
+    date_picker.protocol("WM_DELETE_WINDOW", on_close)
 
 date_entry.bind("<Button-1>", open_date_picker)
 
