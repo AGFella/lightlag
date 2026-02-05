@@ -2,6 +2,7 @@ import ephem
 import datetime
 import tkinter as tk
 from tkinter import ttk
+from tkcalendar import Calendar
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -136,6 +137,42 @@ date_label.grid(row=0, column=0, padx=10, pady=10)
 date_entry = tk.Entry(root)
 date_entry.grid(row=0, column=1, padx=10, pady=10)
 date_entry.insert(0, datetime.datetime.now().strftime('%Y-%m-%d'))  # Default to today
+
+def open_date_picker(event=None):
+    picker = tk.Toplevel(root)
+    picker.title("Select Date")
+    picker.resizable(False, False)
+
+    today = datetime.date.today()
+    cal = Calendar(
+        picker,
+        selectmode="day",
+        year=today.year,
+        month=today.month,
+        day=today.day,
+        date_pattern="y-mm-dd",
+    )
+    cal.pack(padx=10, pady=10)
+
+    def set_date():
+        date_entry.delete(0, tk.END)
+        date_entry.insert(0, cal.get_date())
+        picker.destroy()
+
+    def set_today():
+        cal.selection_set(today)
+        set_date()
+
+    button_frame = tk.Frame(picker)
+    button_frame.pack(padx=10, pady=(0, 10), fill="x")
+
+    select_button = tk.Button(button_frame, text="Select", command=set_date)
+    select_button.pack(side="left")
+
+    today_button = tk.Button(button_frame, text="Today", command=set_today)
+    today_button.pack(side="right")
+
+date_entry.bind("<Button-1>", open_date_picker)
 
 calculate_button = tk.Button(root, text="Calculate", command=on_calculate_button_click)
 calculate_button.grid(row=0, column=2, padx=10, pady=10)
