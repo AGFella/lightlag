@@ -134,9 +134,11 @@ root.title("Planet Distance and Delay Calculator")
 date_label = tk.Label(root, text="Enter Date (YYYY-MM-DD):")
 date_label.grid(row=0, column=0, padx=10, pady=10)
 
-date_entry = tk.Entry(root)
+date_entry = tk.Entry(root, state="readonly")
 date_entry.grid(row=0, column=1, padx=10, pady=10)
+date_entry.configure(state="normal")
 date_entry.insert(0, datetime.datetime.now().strftime('%Y-%m-%d'))  # Default to today
+date_entry.configure(state="readonly")
 
 date_picker = None
 
@@ -145,11 +147,13 @@ def open_date_picker(event=None):
     if date_picker is not None and date_picker.winfo_exists():
         date_picker.lift()
         date_picker.focus_force()
-        return
+        return "break"
 
     date_picker = tk.Toplevel(root)
     date_picker.title("Select Date")
     date_picker.resizable(False, False)
+    date_picker.transient(root)
+    date_picker.focus_force()
 
     today = datetime.date.today()
     cal = Calendar(
@@ -164,10 +168,11 @@ def open_date_picker(event=None):
 
     def set_date():
         global date_picker
+        date_entry.configure(state="normal")
         date_entry.delete(0, tk.END)
         date_entry.insert(0, cal.get_date())
-        date_entry.configure(insertontime=0)
-        root.focus_set()
+        date_entry.configure(state="readonly", insertontime=0)
+        root.focus_force()
         if date_picker is not None and date_picker.winfo_exists():
             date_picker.destroy()
         date_picker = None
@@ -196,10 +201,17 @@ def open_date_picker(event=None):
         if date_picker is not None and date_picker.winfo_exists():
             date_picker.destroy()
         date_picker = None
+        root.focus_force()
 
     date_picker.protocol("WM_DELETE_WINDOW", on_close)
 
 date_entry.bind("<Button-1>", open_date_picker)
+date_entry.bind("<FocusIn>", open_date_picker)
+
+def force_focus(event=None):
+    root.focus_force()
+
+root.bind_all("<Button-1>", force_focus, add="+")
 
 calculate_button = tk.Button(root, text="Calculate", command=on_calculate_button_click)
 calculate_button.grid(row=0, column=2, padx=10, pady=10)
