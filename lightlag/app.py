@@ -46,46 +46,6 @@ def compute_planet_distances(current_time):
         positions.append((planet_name, x, y))  # Add position to the plot list
     return result, positions
 
-# Function to handle the date input and display results
-def on_calculate_button_click(event=None):
-    # Get the date from the input field
-    date_str = date_entry.get()
-    
-    if date_str == "":  # If the input is empty, use the current date
-        date_str = datetime.datetime.now().strftime('%Y-%m-%d')
-    
-    try:
-        # Parse the date and convert it to ephem date format
-        date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
-        current_time = ephem.Date(date_obj)
-        
-        # Compute the distances and delays
-        results, positions = compute_planet_distances(current_time)
-        
-        # Clear existing rows in the table
-        for row in treeview.get_children():
-            treeview.delete(row)
-        
-        # Insert the results into the table
-        for result in results:
-            treeview.insert("", "end", values=(
-                result["Planet"],
-                result["Distance from Earth (AU)"],
-                result["Distance from Earth (Million km)"],
-                result["Light Delay (s)"],
-                result["Light Delay (min)"]
-            ))
-        
-        # Store positions for plotting later
-        global plot_positions, plot_current_time
-        plot_positions = positions
-        plot_current_time = current_time  # Store the current time to pass to the plot
-        
-        # Enable the show plot button after calculations
-        show_plot_button.config(state="normal")
-    except ValueError:
-        print("Invalid date format. Please enter the date in YYYY-MM-DD format.")
-
 # Function to show the plot with the Sun at the center and planets around it in spherical coordinates
 def show_planet_plot():
     current_time = plot_current_time  # Get the current time for plotting
@@ -130,15 +90,14 @@ planets = {
 root = tk.Tk()
 root.title("Planet Distance and Delay Calculator")
 
-# Date input field and calculate button
+# Date input field
 date_label = tk.Label(root, text="Enter Date (YYYY-MM-DD):")
-date_label.grid(row=0, column=0, padx=10, pady=10)
+date_label.grid(row=0, column=0, padx=(10, 4), pady=10)
 
-date_entry = tk.Entry(root, state="readonly")
-date_entry.grid(row=0, column=1, padx=10, pady=10)
-date_entry.configure(state="normal")
-date_entry.insert(0, datetime.datetime.now().strftime('%Y-%m-%d'))  # Default to today
-date_entry.configure(state="readonly")
+date_var = tk.StringVar()
+date_entry = tk.Entry(root, textvariable=date_var)
+date_entry.grid(row=0, column=1, padx=(4, 10), pady=10)
+date_var.set(datetime.datetime.now().strftime('%Y-%m-%d'))  # Default to today
 
 date_picker = None
 
@@ -168,14 +127,14 @@ def open_date_picker(event=None):
 
     def set_date():
         global date_picker
-        date_entry.configure(state="normal")
         date_entry.delete(0, tk.END)
         date_entry.insert(0, cal.get_date())
-        date_entry.configure(state="readonly", insertontime=0)
+        date_entry.configure(insertontime=0)
         root.focus_force()
         if date_picker is not None and date_picker.winfo_exists():
             date_picker.destroy()
         date_picker = None
+        update_from_date_field()
 
     def set_today():
         cal.selection_set(today)
@@ -206,18 +165,41 @@ def open_date_picker(event=None):
     date_picker.protocol("WM_DELETE_WINDOW", on_close)
 
 date_entry.bind("<Button-1>", open_date_picker)
-date_entry.bind("<FocusIn>", open_date_picker)
 
 def force_focus(event=None):
     root.focus_force()
 
 root.bind_all("<Button-1>", force_focus, add="+")
 
-calculate_button = tk.Button(root, text="Calculate", command=on_calculate_button_click)
-calculate_button.grid(row=0, column=2, padx=10, pady=10)
+def update_from_date_field(event=None):
+    date_str = date_entry.get().strip()
+    if len(date_str) != 10:
+        return
+    try:
+        date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        return
 
-# Allow pressing Enter to trigger calculation
-root.bind("<Return>", on_calculate_button_click)
+    current_time = ephem.Date(date_obj)
+    results, positions = compute_planet_distances(current_time)
+
+    for row in treeview.get_children():
+        treeview.delete(row)
+
+    for result in results:
+        treeview.insert("", "end", values=(
+            result["Planet"],
+            result["Distance from Earth (AU)"],
+            result["Distance from Earth (Million km)"],
+            result["Light Delay (s)"],
+            result["Light Delay (min)"]
+        ))
+
+    global plot_positions, plot_current_time
+    plot_positions = positions
+    plot_current_time = current_time
+
+    show_plot_button.config(state="normal")
 
 # Treeview to display results
 columns = ("Planet", "Distance from Earth (AU)", "Distance from Earth (Million km)", "Light Delay (s)", "Light Delay (min)")
@@ -231,6 +213,16 @@ for col in columns:
 # Show plot button
 show_plot_button = tk.Button(root, text="Show Plot", command=show_planet_plot, state="disabled")
 show_plot_button.grid(row=2, column=0, columnspan=3, padx=10, pady=10)
+
+def on_date_var_change(*_):
+    update_from_date_field()
+
+date_var.trace_add("write", on_date_var_change)
+root.bind("<Return>", update_from_date_field)
+date_entry.bind("<FocusOut>", update_from_date_field)
+
+# Initial calculation for today's date
+update_from_date_field()
 
 # Start the GUI
 root.mainloop()
