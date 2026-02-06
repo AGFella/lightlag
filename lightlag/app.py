@@ -49,25 +49,57 @@ def compute_planet_distances(current_time):
 # Function to show the plot with the Sun at the center and planets around it in spherical coordinates
 def show_planet_plot():
     current_time = plot_current_time  # Get the current time for plotting
+    selected = [name for name, var in planet_vars.items() if var.get()]
+    if not selected:
+        return
     # Create the plot
     fig, ax = plt.subplots()
     ax.set_aspect('equal')
-    ax.set_xlim(-40, 40)
-    ax.set_ylim(-40, 40)
+    # Plot the Sun at the center (0, 0)
+    ax.plot(0, 0, 'yo', label="Sun", markersize=8)
 
-    # Plot Earth at the center (0, 0)
-    ax.plot(0, 0, 'bo', label="Earth", markersize=8)
+    # Compute heliocentric positions for each planet
+    positions = []
+    max_r = 1.0
+    for planet_name, planet in planets.items():
+        if planet_name not in selected:
+            continue
+        planet.compute(current_time)
+        r = planet.sun_distance
+        max_r = max(max_r, r)
+        lon = float(planet.hlon)
+        x = r * np.cos(lon)
+        y = r * np.sin(lon)
+        positions.append((planet_name, x, y))
 
-    # Plot the planets around Earth using their geocentric ecliptic longitude
-    for name, x, y in plot_positions:
+    # Add Earth (derived from Sun's geocentric position)
+    if "Earth" in selected:
+        sun = ephem.Sun()
+        sun.compute(current_time)
+        sun_ecl = ephem.Ecliptic(sun)
+        earth_r = sun.earth_distance
+        earth_lon = float(sun_ecl.lon) + np.pi
+        earth_x = earth_r * np.cos(earth_lon)
+        earth_y = earth_r * np.sin(earth_lon)
+        positions.append(("Earth", earth_x, earth_y))
+        max_r = max(max_r, earth_r)
+
+    # Plot the planets around the Sun
+    for name, x, y in positions:
         ax.plot(x, y, 'o', label=name)
         ax.text(x, y, name, fontsize=9, ha='right')
+
+    # Set bounds based on farthest planet
+    padding = 0.15 * max_r
+    lim = max_r + padding
+    ax.set_xlim(-lim, lim)
+    ax.set_ylim(-lim, lim)
     
     # Add grid to the plot
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     
     # Add labels and legend
-    ax.set_title("Planet Positions Relative to Earth")
+    ax.set_title("Planet Positions Relative to the Sun")
     ax.set_xlabel("AU (x-axis)")
     ax.set_ylabel("AU (y-axis)")
     ax.legend(loc='upper left')
@@ -212,7 +244,7 @@ for col in columns:
 
 # Show plot button
 show_plot_button = tk.Button(root, text="Show Plot", command=show_planet_plot, state="disabled")
-show_plot_button.grid(row=2, column=0, columnspan=3, padx=10, pady=10)
+show_plot_button.grid(row=3, column=0, columnspan=3, padx=10, pady=10)
 
 def on_date_var_change(*_):
     update_from_date_field()
@@ -223,6 +255,18 @@ date_entry.bind("<FocusOut>", update_from_date_field)
 
 # Initial calculation for today's date
 update_from_date_field()
+
+# Planet selection for plot
+planet_vars = {}
+planet_order = ["Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+planets_frame = tk.LabelFrame(root, text="Planets to Plot")
+planets_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="w")
+
+for idx, name in enumerate(planet_order):
+    var = tk.BooleanVar(value=True)
+    planet_vars[name] = var
+    cb = tk.Checkbutton(planets_frame, text=name, variable=var)
+    cb.grid(row=0, column=idx, padx=(0, 6), sticky="w")
 
 # Start the GUI
 root.mainloop()
