@@ -57,7 +57,6 @@ def show_planet_plot():
     ax.set_aspect('equal')
     # Plot the Sun at the center (0, 0)
     ax.plot(0, 0, 'yo', markersize=8)
-    ax.text(0, -0.15, "Sun", fontsize=9, ha='center', va='top')
 
     color_map = {
         "Mercury": "#8c8c8c",
@@ -124,10 +123,14 @@ def show_planet_plot():
         ax.plot(xs, ys, color=color, linewidth=0.8, alpha=0.6)
 
     # Plot the planets around the Sun
+    label_offset = 0.05 * max_r
     for name, x, y in positions:
         color = color_map.get(name, "#666666")
         ax.plot(x, y, 'o', color=color)
-        ax.text(x, y, name, fontsize=9, ha='center', va='top')
+        ax.text(x, y - label_offset, name, fontsize=9, ha='center', va='top')
+
+    # Sun label uses the same offset as planets
+    ax.text(0, -label_offset, "Sun", fontsize=9, ha='center', va='top')
 
     # Set bounds based on farthest planet
     padding = 0.15 * max_r
