@@ -56,38 +56,78 @@ def show_planet_plot():
     fig, ax = plt.subplots()
     ax.set_aspect('equal')
     # Plot the Sun at the center (0, 0)
-    ax.plot(0, 0, 'yo', label="Sun", markersize=8)
+    ax.plot(0, 0, 'yo', markersize=8)
+    ax.text(0, -0.15, "Sun", fontsize=9, ha='center', va='top')
 
-    # Compute heliocentric positions for each planet
+    color_map = {
+        "Mercury": "#8c8c8c",
+        "Venus": "#c9a227",
+        "Earth": "#2b7cff",
+        "Mars": "#d14b3a",
+        "Jupiter": "#c58b5a",
+        "Saturn": "#d9c27a",
+        "Uranus": "#68c2c8",
+        "Neptune": "#3b5bd6",
+    }
+
+    orbital_period_days = {
+        "Mercury": 87.969,
+        "Venus": 224.701,
+        "Earth": 365.256,
+        "Mars": 686.980,
+        "Jupiter": 4332.589,
+        "Saturn": 10759.22,
+        "Uranus": 30688.5,
+        "Neptune": 60182.0,
+    }
+
+    def heliocentric_xy_for(body_name, date_obj):
+        if body_name == "Earth":
+            sun = ephem.Sun()
+            sun.compute(date_obj)
+            sun_ecl = ephem.Ecliptic(sun)
+            r = sun.earth_distance
+            lon = float(sun_ecl.lon) + np.pi
+            return r * np.cos(lon), r * np.sin(lon), r
+        planet = planets[body_name]
+        planet.compute(date_obj)
+        r = planet.sun_distance
+        lon = float(planet.hlon)
+        return r * np.cos(lon), r * np.sin(lon), r
+
+    # Current positions
     positions = []
     max_r = 1.0
-    for planet_name, planet in planets.items():
-        if planet_name not in selected:
+    for planet_name in selected:
+        if planet_name != "Earth" and planet_name not in planets:
             continue
-        planet.compute(current_time)
-        r = planet.sun_distance
+        x, y, r = heliocentric_xy_for(planet_name, current_time)
         max_r = max(max_r, r)
-        lon = float(planet.hlon)
-        x = r * np.cos(lon)
-        y = r * np.sin(lon)
         positions.append((planet_name, x, y))
 
-    # Add Earth (derived from Sun's geocentric position)
-    if "Earth" in selected:
-        sun = ephem.Sun()
-        sun.compute(current_time)
-        sun_ecl = ephem.Ecliptic(sun)
-        earth_r = sun.earth_distance
-        earth_lon = float(sun_ecl.lon) + np.pi
-        earth_x = earth_r * np.cos(earth_lon)
-        earth_y = earth_r * np.sin(earth_lon)
-        positions.append(("Earth", earth_x, earth_y))
-        max_r = max(max_r, earth_r)
+    # Trajectories (one full orbital period for each selected planet)
+    samples = 360
+    for planet_name in selected:
+        if planet_name != "Earth" and planet_name not in planets:
+            continue
+        period_days = orbital_period_days.get(planet_name)
+        if period_days is None:
+            continue
+        xs = []
+        ys = []
+        for i in range(samples + 1):
+            dt = ephem.Date(current_time + (i / samples) * period_days)
+            x, y, _ = heliocentric_xy_for(planet_name, dt)
+            xs.append(x)
+            ys.append(y)
+        color = color_map.get(planet_name, "#666666")
+        ax.plot(xs, ys, color=color, linewidth=0.8, alpha=0.6)
 
     # Plot the planets around the Sun
     for name, x, y in positions:
-        ax.plot(x, y, 'o', label=name)
-        ax.text(x, y, name, fontsize=9, ha='right')
+        color = color_map.get(name, "#666666")
+        ax.plot(x, y, 'o', color=color)
+        ax.text(x, y, name, fontsize=9, ha='center', va='top')
 
     # Set bounds based on farthest planet
     padding = 0.15 * max_r
@@ -98,11 +138,10 @@ def show_planet_plot():
     # Add grid to the plot
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
     
-    # Add labels and legend
+    # Add labels
     ax.set_title("Planet Positions Relative to the Sun")
     ax.set_xlabel("AU (x-axis)")
     ax.set_ylabel("AU (y-axis)")
-    ax.legend(loc='upper left')
 
     # Show the plot
     plt.show()
@@ -263,7 +302,7 @@ planets_frame = tk.LabelFrame(root, text="Planets to Plot")
 planets_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="w")
 
 for idx, name in enumerate(planet_order):
-    var = tk.BooleanVar(value=True)
+    var = tk.BooleanVar(value=False)
     planet_vars[name] = var
     cb = tk.Checkbutton(planets_frame, text=name, variable=var)
     cb.grid(row=0, column=idx, padx=(0, 6), sticky="w")
