@@ -98,7 +98,7 @@ def show_planet_plot():
     positions = []
     max_r = 1.0
     for planet_name in selected:
-        if planet_name != "Earth" and planet_name not in planets:
+        if planet_name not in planets and planet_name != "Earth":
             continue
         x, y, r = heliocentric_xy_for(planet_name, current_time)
         max_r = max(max_r, r)
@@ -107,7 +107,7 @@ def show_planet_plot():
     # Trajectories (one full orbital period for each selected planet)
     samples = 360
     for planet_name in selected:
-        if planet_name != "Earth" and planet_name not in planets:
+        if planet_name not in planets and planet_name != "Earth":
             continue
         period_days = orbital_period_days.get(planet_name)
         if period_days is None:
@@ -153,6 +153,7 @@ def show_planet_plot():
 planets = {
     "Mercury": ephem.Mercury(),
     "Venus": ephem.Venus(),
+    "Moon": ephem.Moon(),
     "Mars": ephem.Mars(),
     "Jupiter": ephem.Jupiter(),
     "Saturn": ephem.Saturn(),
